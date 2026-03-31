@@ -1,88 +1,153 @@
-import { useState } from 'react'
-import './App.css'
+import { useEffect, useState } from 'react';
+import './App.css';
+import Todo from './Todo';
+import NewTodo from './NewTodo';
 
-function Square({ value, onSquareClick }) {
-  return (
-    <button className="square" onClick={onSquareClick}>
-      {value}
-    </button>
-  )
-}
+const API = 'https://cse2004.us';
+const KEY = 'e4d8fd-d75e94-742a89-a4791f-77e151';
 
-export default function App() {
-  const [xIsNext, setXIsNext] = useState(true)
-  const [squares, setSquares] = useState(Array(9).fill(null))
+function App() {
+  const [todos, setTodos] = useState([]);
+  const [message, setMessage] = useState('');
 
-  function handleClick(i) {
-    if (calculateWinner(squares) || squares[i]) {
-      return
+  const showMessage = (text) => {
+    setMessage(text);
+  };
+
+  const getTodos = async () => {
+    try {
+      showMessage('Loading todos...');
+
+      const response = await fetch(`${API}/todos`, {
+        headers: {
+          'x-api-key': KEY
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load todos');
+      }
+
+      const data = await response.json();
+      setTodos(data);
+      showMessage('Todos loaded.');
+    } catch (error) {
+      console.error(error);
+      showMessage('Could not load todos.');
     }
+  };
 
-    const nextSquares = squares.slice()
+  const addTodo = async (text) => {
+    try {
+      showMessage('Adding todo...');
 
-    if (xIsNext) {
-      nextSquares[i] = 'X'
-    } else {
-      nextSquares[i] = 'O'
+      const response = await fetch(`${API}/todos`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add todo');
+      }
+
+      await getTodos();
+      showMessage('Todo added.');
+    } catch (error) {
+      console.error(error);
+      showMessage('Could not add todo.');
     }
+  };
 
-    setSquares(nextSquares)
-    setXIsNext(!xIsNext)
-  }
+  const updateTodo = async (id, updatedFields) => {
+    try {
+      const response = await fetch(`${API}/todos/${id}`, {
+        method: 'PUT',
+        headers: {
+          'x-api-key': KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedFields)
+      });
 
-  const winner = calculateWinner(squares)
-  let status
+      if (!response.ok) {
+        throw new Error('Failed to update todo');
+      }
 
-  if (winner) {
-    status = 'Winner: ' + winner
-  } else {
-    status = 'Next player: ' + (xIsNext ? 'X' : 'O')
-  }
+      await getTodos();
+      showMessage('Todo updated.');
+    } catch (error) {
+      console.error(error);
+      showMessage('Could not update todo.');
+    }
+  };
+
+  const deleteTodo = async (id) => {
+    try {
+      const response = await fetch(`${API}/todos/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-api-key': KEY
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete todo');
+      }
+
+      await getTodos();
+      showMessage('Todo deleted.');
+    } catch (error) {
+      console.error(error);
+      showMessage('Could not delete todo.');
+    }
+  };
+
+  useEffect(() => {
+    getTodos();
+  }, []);
 
   return (
     <>
-      <div className="status">{status}</div>
+      <header className="site-header">
+        <h1>ToDo App</h1>
+        <h2>Odin Flores - ToDo App</h2>
+        <p>Track tasks, mark them complete, and keep them saved.</p>
+      </header>
 
-      <div className="board-row">
-        <Square value={squares[0]} onSquareClick={() => handleClick(0)} />
-        <Square value={squares[1]} onSquareClick={() => handleClick(1)} />
-        <Square value={squares[2]} onSquareClick={() => handleClick(2)} />
-      </div>
+      <main>
+        <section className="todo-app" aria-labelledby="todo-heading">
+          <h2 id="todo-heading">My ToDos</h2>
 
-      <div className="board-row">
-        <Square value={squares[3]} onSquareClick={() => handleClick(3)} />
-        <Square value={squares[4]} onSquareClick={() => handleClick(4)} />
-        <Square value={squares[5]} onSquareClick={() => handleClick(5)} />
-      </div>
+          <NewTodo onAddTodo={addTodo} />
 
-      <div className="board-row">
-        <Square value={squares[6]} onSquareClick={() => handleClick(6)} />
-        <Square value={squares[7]} onSquareClick={() => handleClick(7)} />
-        <Square value={squares[8]} onSquareClick={() => handleClick(8)} />
-      </div>
+          <p id="message" aria-live="polite">{message}</p>
+
+          <section id="todos">
+            {todos.length === 0 ? (
+              <p className="empty-message">No todos yet. Add one above.</p>
+            ) : (
+              todos.map((todo) => (
+                <Todo
+                  key={todo.id}
+                  todo={todo}
+                  onToggle={updateTodo}
+                  onDelete={deleteTodo}
+                />
+              ))
+            )}
+          </section>
+        </section>
+      </main>
+
+      <footer className="site-footer">
+        <p>Built with React and the ToDo API.</p>
+      </footer>
     </>
-  )
+  );
 }
 
-function calculateWinner(squares) {
-  const lines = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6],
-  ]
-
-  for (let i = 0; i < lines.length; i++) {
-    const [a, b, c] = lines[i]
-
-    if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-      return squares[a]
-    }
-  }
-
-  return null
-}
+export default App;
