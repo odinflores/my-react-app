@@ -2,11 +2,14 @@ import './Todo.css';
 
 function Todo() {
   return (
-    <div className="todo">
-      <input type="checkbox" />
-      <p>Example ToDo</p>
-      <button>Delete</button>
-    </div>
+    <article className="todo">
+      <label className="todo-left">
+        <input type="checkbox" />
+        <span>Example ToDo</span>
+      </label>
+
+      <button type="button">Delete</button>
+    </article>
   );
 }
 
